@@ -150,24 +150,32 @@ function Dashboard() {
             title="节目季进度"
             extra={<Button type="link" onClick={() => setCurrentModule('episode')}>查看全部</Button>}
           >
-            {seasons.map(season => (
-              <div key={season.id} style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <Space>
-                    <span style={{ fontWeight: 500, fontSize: 15 }}>{season.name}</span>
-                    <Tag color="blue">{season.episodeCount} 集</Tag>
-                  </Space>
-                  <span style={{ color: '#666' }}>
-                    {dayjs(season.startDate).format('YYYY.MM')} - {season.endDate ? dayjs(season.endDate).format('YYYY.MM') : '进行中'}
-                  </span>
+            {seasons.map(season => {
+              const seasonEpisodes = episodes.filter(e => e.seasonId === season.id);
+              const seasonPublishedCount = seasonEpisodes.filter(e => e.status === 'published').length;
+              const progress = season.episodeCount > 0
+                ? Math.round((seasonPublishedCount / season.episodeCount) * 100)
+                : 0;
+              return (
+                <div key={season.id} style={{ marginBottom: 24 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Space>
+                      <span style={{ fontWeight: 500, fontSize: 15 }}>{season.name}</span>
+                      <Tag color="blue">{season.episodeCount} 集</Tag>
+                      <Tag color="success">{seasonPublishedCount} 已发布</Tag>
+                    </Space>
+                    <span style={{ color: '#666' }}>
+                      {dayjs(season.startDate).format('YYYY.MM')} - {season.endDate ? dayjs(season.endDate).format('YYYY.MM') : '进行中'}
+                    </span>
+                  </div>
+                  <Progress
+                    percent={progress}
+                    strokeColor={{ from: '#1890ff', to: '#52c41a' }}
+                    format={percent => `${percent}% 已发布`}
+                  />
                 </div>
-                <Progress
-                  percent={Math.round((publishedCount / season.episodeCount) * 100)}
-                  strokeColor={{ from: '#1890ff', to: '#52c41a' }}
-                  format={percent => `${percent}% 已发布`}
-                />
-              </div>
-            ))}
+              );
+            })}
           </Card>
 
           <Card

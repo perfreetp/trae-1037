@@ -54,17 +54,27 @@ function EpisodeWorkbench() {
     mistakeRecords, editingTodos, copyrightMusic,
     coverDrafts, copywritings, timelineNotes, sponsorships,
     updateTaskStatus, toggleMistakeFixed, updateEditingTodoStatus,
-    addTask, addTopic,
+    addTask, addTopic, updateEpisode,
   } = useAppStore();
 
   const [activeTab, setActiveTab] = useState('topics');
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [topicStatusFilter, setTopicStatusFilter] = useState<string | null>(null);
+  const [topicSearchText, setTopicSearchText] = useState('');
   const [form] = Form.useForm();
   const [topicForm] = Form.useForm();
 
   const currentEpisode = episodes.find(e => e.id === currentEpisodeId) || episodes[2];
   const epId = currentEpisode?.id || 'e3';
+
+  const filteredTopics = topics.filter(topic => {
+    const matchStatus = !topicStatusFilter || topic.status === topicStatusFilter;
+    const matchSearch = !topicSearchText ||
+      topic.title.toLowerCase().includes(topicSearchText.toLowerCase()) ||
+      topic.tags.some(tag => tag.toLowerCase().includes(topicSearchText.toLowerCase()));
+    return matchStatus && matchSearch;
+  });
 
   const episodeTasks = tasks.filter(t => t.episodeId === epId || !t.episodeId);
   const episodeClips = clipMarkers.filter(c => c.episodeId === epId);
@@ -163,47 +173,64 @@ function EpisodeWorkbench() {
                 placeholder="筛选状态"
                 style={{ width: 150 }}
                 allowClear
+                value={topicStatusFilter}
+                onChange={(val) => setTopicStatusFilter(val || null)}
               >
                 <Option value="proposed">待审核</Option>
                 <Option value="approved">已通过</Option>
                 <Option value="scheduled">已排期</Option>
                 <Option value="used">已使用</Option>
               </Select>
-              <Input.Search placeholder="搜索选题..." style={{ width: 250 }} />
+              <Input.Search
+                placeholder="搜索选题标题或标签..."
+                style={{ width: 250 }}
+                value={topicSearchText}
+                onChange={(e) => setTopicSearchText(e.target.value)}
+                onClear={() => setTopicSearchText('')}
+                allowClear
+              />
             </Space>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsTopicModalOpen(true)}>
               新增选题
             </Button>
           </div>
           <Row gutter={[16, 16]}>
-            {topics.map(topic => (
-              <Col span={8} key={topic.id}>
-                <Card
-                  size="small"
-                  hoverable
-                  title={
-                    <Space>
-                      <span style={{ fontSize: 14 }}>{topic.title}</span>
-                      <Tag color={topicStatusColor[topic.status]}>
-                        {topicStatusText[topic.status]}
-                      </Tag>
-                    </Space>
-                  }
-                >
-                  <div style={{ marginBottom: 8, color: '#666', fontSize: 13 }}>
-                    {topic.description || '暂无描述'}
-                  </div>
-                  <Space wrap>
-                    {topic.tags.map(tag => (
-                      <Tag key={tag} color="blue" style={{ fontSize: 12 }}>{tag}</Tag>
-                    ))}
-                  </Space>
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
-                    创建于 {topic.createdAt}
-                  </div>
-                </Card>
+            {filteredTopics.length === 0 ? (
+              <Col span={24}>
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>
+                  暂无匹配的选题
+                </div>
               </Col>
-            ))}
+            ) : (
+              filteredTopics.map(topic => (
+                <Col span={8} key={topic.id}>
+                  <Card
+                    size="small"
+                    hoverable
+                    title={
+                      <Space>
+                        <span style={{ fontSize: 14 }}>{topic.title}</span>
+                        <Tag color={topicStatusColor[topic.status]}>
+                          {topicStatusText[topic.status]}
+                        </Tag>
+                      </Space>
+                    }
+                  >
+                    <div style={{ marginBottom: 8, color: '#666', fontSize: 13 }}>
+                      {topic.description || '暂无描述'}
+                    </div>
+                    <Space wrap>
+                      {topic.tags.map(tag => (
+                        <Tag key={tag} color="blue" style={{ fontSize: 12 }}>{tag}</Tag>
+                      ))}
+                    </Space>
+                    <div style={{ marginTop: 8, fontSize: 12, color: '#999' }}>
+                      创建于 {topic.createdAt}
+                    </div>
+                  </Card>
+                </Col>
+              ))
+            )}
           </Row>
         </div>
       ),
@@ -714,6 +741,12 @@ function EpisodeWorkbench() {
             <Select
               value={currentEpisode?.status}
               style={{ width: 120 }}
+              onChange={(val) => {
+                if (currentEpisode) {
+                  updateEpisode(currentEpisode.id, { status: val as any });
+                  message.success('状态已更新');
+                }
+              }}
             >
               {statusOptions.map(opt => (
                 <Option key={opt.value} value={opt.value}>{opt.label}</Option>
@@ -722,6 +755,12 @@ function EpisodeWorkbench() {
             <span style={{ color: '#666', marginLeft: 16 }}>截止日期：</span>
             <DatePicker
               value={currentEpisode ? dayjs(currentEpisode.deadline) : null}
+              onChange={(date) => {
+                if (currentEpisode && date) {
+                  updateEpisode(currentEpisode.id, { deadline: date.format('YYYY-MM-DD') });
+                  message.success('截止日期已更新');
+                }
+              }}
             />
           </Space>
         </div>

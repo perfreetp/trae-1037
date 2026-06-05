@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Card, Row, Col, Tag, Space, Button, Input, Table,
-  Upload, Modal, Select, message,
+  Upload, Modal, Select, message, Popconfirm, Form,
 } from 'antd';
 import {
   UploadOutlined,
@@ -13,12 +13,14 @@ import {
   FileOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import { Material } from '../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
+const { TextArea } = Input;
 
 const typeIconMap: Record<string, any> = {
   audio: <MusicOutlined style={{ color: '#52c41a', fontSize: 24 }} />,
@@ -45,16 +47,61 @@ const typeTextMap: Record<string, string> = {
 };
 
 function Materials() {
-  const { materials, episodes } = useAppStore();
+  const { materials, episodes, addMaterial, deleteMaterial } = useAppStore();
   const [searchText, setSearchText] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  const [episodeFilter, setEpisodeFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadForm] = Form.useForm();
 
   const filteredMaterials = materials.filter(m => {
     const matchSearch = !searchText || m.name.includes(searchText) || m.fileName.includes(searchText);
     const matchType = !typeFilter || m.type === typeFilter;
-    return matchSearch && matchType;
+    const matchEpisode = !episodeFilter || m.episodeId === episodeFilter;
+    return matchSearch && matchType && matchEpisode;
   });
+
+  const handleDelete = (id: string) => {
+    deleteMaterial(id);
+    message.success('素材已删除');
+  };
+
+  const handleDownload = (material: Material) => {
+    const content = `素材名称: ${material.name}\n文件名: ${material.fileName}\n类型: ${typeTextMap[material.type]}\n大小: ${material.size}\n上传日期: ${material.uploadDate}\n标签: ${material.tags.join(', ')}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${material.name}_信息.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    message.success(`已导出 ${material.name} 的信息文件`);
+  };
+
+  const handleUpload = (values: any) => {
+    const fileExt = values.fileName?.split('.').pop()?.toLowerCase();
+    let type: Material['type'] = 'other';
+    if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(fileExt || '')) type = 'audio';
+    else if (['mp4', 'mov', 'avi', 'mkv'].includes(fileExt || '')) type = 'video';
+    else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '')) type = 'image';
+    else if (['doc', 'docx', 'pdf', 'txt', 'xls', 'xlsx', 'psd', 'ai'].includes(fileExt || '')) type = 'document';
+
+    addMaterial({
+      name: values.name,
+      type: values.type || type,
+      fileName: values.fileName || `${values.name}.dat`,
+      size: values.size || '1.0 MB',
+      uploadDate: dayjs().format('YYYY-MM-DD'),
+      episodeId: values.episodeId || undefined,
+      tags: values.tags || [],
+    });
+    message.success('素材上传成功');
+    setIsUploadModalOpen(false);
+    uploadForm.resetFields();
+  };
 
   const columns = [
     {
@@ -107,10 +154,12 @@ function Materials() {
     {
       title: '操作',
       key: 'action',
-      render: () => (
+      render: (_: any, record: Material) => (
         <Space>
-          <Button type="link" size="small" icon={<DownloadOutlined />}>下载</Button>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(record)}>下载</Button>
+          <Popconfirm title="确定删除此素材？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -146,6 +195,8 @@ function Materials() {
               placeholder="关联单集"
               style={{ width: 200 }}
               allowClear
+              value={episodeFilter}
+              onChange={setEpisodeFilter}
             >
               {episodes.map(ep => (
                 <Option key={ep.id} value={ep.id}>EP.{ep.number} {ep.title}</Option>
@@ -167,11 +218,9 @@ function Materials() {
                 列表视图
               </Button>
             </Button.Group>
-            <Upload multiple>
-              <Button type="primary" icon={<UploadOutlined />}>
-                上传素材
-              </Button>
-            </Upload>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsUploadModalOpen(true)}>
+              上传素材
+            </Button>
           </Space>
         </div>
       </Card>
@@ -185,7 +234,12 @@ function Materials() {
           <Tag color="default">其他 {materials.filter(m => m.type === 'other').length}</Tag>
         </Space>
 
-        {viewMode === 'grid' ? (
+        {filteredMaterials.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#999' }}>
+            <FileOutlined style={{ fontSize: 48, marginBottom: 12 }} />
+            <div>暂无匹配的素材</div>
+          </div>
+        ) : viewMode === 'grid' ? (
           <Row gutter={[16, 16]}>
             {filteredMaterials.map(mat => (
               <Col span={6} key={mat.id}>
@@ -193,6 +247,12 @@ function Materials() {
                   hoverable
                   size="small"
                   bodyStyle={{ padding: 16 }}
+                  actions={[
+                    <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(mat)}>下载</Button>,
+                    <Popconfirm title="确定删除？" onConfirm={() => handleDelete(mat.id)} okText="确定" cancelText="取消">
+                      <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+                    </Popconfirm>,
+                  ]}
                 >
                   <div style={{
                     height: 100,
@@ -211,6 +271,11 @@ function Materials() {
                   <div style={{ fontSize: 12, color: '#999', marginBottom: 8 }}>
                     {mat.size} · {mat.uploadDate}
                   </div>
+                  {mat.episodeId && (
+                    <div style={{ fontSize: 12, color: '#1890ff', marginBottom: 8 }}>
+                      📎 EP.{episodes.find(e => e.id === mat.episodeId)?.number}
+                    </div>
+                  )}
                   <Space wrap>
                     <Tag color={typeColorMap[mat.type]} style={{ fontSize: 12 }}>
                       {typeTextMap[mat.type]}
@@ -232,6 +297,63 @@ function Materials() {
           />
         )}
       </Card>
+
+      <Modal
+        title="上传素材"
+        open={isUploadModalOpen}
+        onCancel={() => setIsUploadModalOpen(false)}
+        footer={null}
+        width={600}
+      >
+        <Form form={uploadForm} layout="vertical" onFinish={handleUpload}>
+          <Row gutter={16}>
+            <Col span={14}>
+              <Form.Item name="name" label="素材名称" rules={[{ required: true }]}>
+                <Input placeholder="请输入素材名称" />
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Form.Item name="type" label="素材类型" rules={[{ required: true }]}>
+                <Select placeholder="选择类型">
+                  <Option value="audio">音频</Option>
+                  <Option value="video">视频</Option>
+                  <Option value="image">图片</Option>
+                  <Option value="document">文档</Option>
+                  <Option value="other">其他</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={14}>
+              <Form.Item name="fileName" label="文件名">
+                <Input placeholder="例如: audio_v1.mp3" />
+              </Form.Item>
+            </Col>
+            <Col span={10}>
+              <Form.Item name="size" label="文件大小">
+                <Input placeholder="例如: 5.2 MB" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="episodeId" label="关联单集">
+            <Select placeholder="选择关联的单集（可选）" allowClear>
+              {episodes.map(ep => (
+                <Option key={ep.id} value={ep.id}>EP.{ep.number} {ep.title}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="tags" label="标签">
+            <Select mode="tags" placeholder="输入标签后回车" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button type="primary" htmlType="submit">确认上传</Button>
+              <Button onClick={() => setIsUploadModalOpen(false)}>取消</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 }

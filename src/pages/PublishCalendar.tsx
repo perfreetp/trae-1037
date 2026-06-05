@@ -18,7 +18,7 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 function PublishCalendar() {
-  const { episodes, sponsorships, updateEpisodeStatus } = useAppStore();
+  const { episodes, sponsorships, updateEpisodeStatus, updateEpisode } = useAppStore();
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -84,8 +84,22 @@ function PublishCalendar() {
   const selectedData = getListData(selectedDate);
 
   const handlePublish = (episodeId: string) => {
-    updateEpisodeStatus(episodeId, 'published');
+    updateEpisode(episodeId, {
+      status: 'published',
+      publishDate: dayjs().format('YYYY-MM-DD'),
+    });
     message.success('已标记为已发布');
+  };
+
+  const handleSchedulePublish = (values: any) => {
+    updateEpisode(values.episodeId, {
+      status: 'ready',
+      publishDate: values.publishDate.format('YYYY-MM-DD'),
+      deadline: values.publishDate.format('YYYY-MM-DD'),
+    });
+    message.success('发布已安排');
+    setIsModalOpen(false);
+    form.resetFields();
   };
 
   return (
@@ -248,7 +262,7 @@ function PublishCalendar() {
         onCancel={() => setIsModalOpen(false)}
         footer={null}
       >
-        <Form form={form} layout="vertical" onFinish={() => { message.success('发布已安排'); setIsModalOpen(false); }}>
+        <Form form={form} layout="vertical" onFinish={handleSchedulePublish}>
           <Form.Item name="episodeId" label="选择单集" rules={[{ required: true }]}>
             <Select placeholder="选择要发布的单集">
               {upcomingEpisodes.map(ep => (

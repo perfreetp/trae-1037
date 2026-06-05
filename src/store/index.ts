@@ -49,11 +49,17 @@ interface AppState {
   setCurrentEpisodeId: (id: string | null) => void;
   updateTaskStatus: (taskId: string, status: Task['status']) => void;
   updateEpisodeStatus: (episodeId: string, status: Episode['status']) => void;
+  updateEpisode: (episodeId: string, updates: Partial<Episode>) => void;
   addTask: (task: Omit<Task, 'id'>) => void;
   addTopic: (topic: Omit<Topic, 'id'>) => void;
   addGuest: (guest: Omit<Guest, 'id'>) => void;
+  updateGuest: (guestId: string, updates: Partial<Guest>) => void;
+  deleteGuest: (guestId: string) => void;
+  addMaterial: (material: Omit<Material, 'id'>) => void;
+  deleteMaterial: (materialId: string) => void;
   toggleMistakeFixed: (id: string) => void;
   updateEditingTodoStatus: (id: string, status: EditingTodo['status']) => void;
+  addReviewComment: (comment: Omit<ReviewComment, 'id'>) => void;
   resolveReviewComment: (id: string) => void;
 }
 
@@ -89,6 +95,10 @@ export const useAppStore = create<AppState>((set) => ({
     episodes: state.episodes.map(e => e.id === episodeId ? { ...e, status } : e)
   })),
 
+  updateEpisode: (episodeId, updates) => set((state) => ({
+    episodes: state.episodes.map(e => e.id === episodeId ? { ...e, ...updates } : e)
+  })),
+
   addTask: (task) => set((state) => ({
     tasks: [...state.tasks, { ...task, id: `t${Date.now()}` }]
   })),
@@ -101,12 +111,32 @@ export const useAppStore = create<AppState>((set) => ({
     guests: [...state.guests, { ...guest, id: `g${Date.now()}` }]
   })),
 
+  updateGuest: (guestId, updates) => set((state) => ({
+    guests: state.guests.map(g => g.id === guestId ? { ...g, ...updates } : g)
+  })),
+
+  deleteGuest: (guestId) => set((state) => ({
+    guests: state.guests.filter(g => g.id !== guestId)
+  })),
+
+  addMaterial: (material) => set((state) => ({
+    materials: [...state.materials, { ...material, id: `mat${Date.now()}` }]
+  })),
+
+  deleteMaterial: (materialId) => set((state) => ({
+    materials: state.materials.filter(m => m.id !== materialId)
+  })),
+
   toggleMistakeFixed: (id) => set((state) => ({
     mistakeRecords: state.mistakeRecords.map(m => m.id === id ? { ...m, fixed: !m.fixed } : m)
   })),
 
   updateEditingTodoStatus: (id, status) => set((state) => ({
     editingTodos: state.editingTodos.map(e => e.id === id ? { ...e, status } : e)
+  })),
+
+  addReviewComment: (comment) => set((state) => ({
+    reviewComments: [...state.reviewComments, { ...comment, id: `rc${Date.now()}` }]
   })),
 
   resolveReviewComment: (id) => set((state) => ({
