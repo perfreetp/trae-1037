@@ -15,6 +15,7 @@ import {
   SafetyOutlined,
   InboxOutlined,
   MessageOutlined,
+  AudioOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import dayjs from 'dayjs';
@@ -89,7 +90,7 @@ function EpisodeWorkbench() {
   const episodeMaterials = materials.filter(m => m.episodeId === epId);
   const episodeReviews = reviewComments.filter(r => r.episodeId === epId);
 
-  const defaultChecklist = currentEpisode?.publishChecklist || [
+  const defaultChecklistItems = [
     { id: 'audio-1', label: '音频文件已导出并备份', checked: false, category: 'audio' as const },
     { id: 'audio-2', label: '音量电平符合平台标准', checked: false, category: 'audio' as const },
     { id: 'audio-3', label: '背景音乐音量合适', checked: false, category: 'audio' as const },
@@ -104,7 +105,7 @@ function EpisodeWorkbench() {
     { id: 'platform-2', label: '各平台账号已登录', checked: false, category: 'platform' as const },
     { id: 'platform-3', label: 'RSS Feed配置正确', checked: false, category: 'platform' as const },
   ];
-  const currentEpisodeChecklist = defaultChecklist;
+  const currentEpisodeChecklist = currentEpisode?.publishChecklist || defaultChecklistItems;
 
   const handleAddTask = (values: any) => {
     addTask({
@@ -326,7 +327,7 @@ function EpisodeWorkbench() {
                     actions={[<Button type="link" size="small">播放</Button>]}
                   >
                     <List.Item.Meta
-                      avatar={<MusicOutlined style={{ fontSize: 24, color: '#1890ff' }} />}
+                      avatar={<AudioOutlined style={{ fontSize: 24, color: '#1890ff' }} />}
                       title={item.name}
                       description={
                         <Space size="small">
@@ -363,7 +364,7 @@ function EpisodeWorkbench() {
                   <List.Item>
                     <List.Item.Meta
                       avatar={
-                        item.type === '音乐' ? <MusicOutlined style={{ color: '#52c41a' }} /> :
+                        item.type === '音乐' ? <AudioOutlined style={{ color: '#52c41a' }} /> :
                         item.type === '图片' ? <PictureOutlined style={{ color: '#1890ff' }} /> :
                         <FileTextOutlined style={{ color: '#faad14' }} />
                       }
@@ -506,7 +507,7 @@ function EpisodeWorkbench() {
                 renderItem={(item) => (
                   <List.Item>
                     <List.Item.Meta
-                      avatar={<MusicOutlined style={{ color: '#1890ff' }} />}
+                      avatar={<AudioOutlined style={{ color: '#1890ff' }} />}
                       title={`${item.title} - ${item.artist}`}
                       description={
                         <Space size="small">

@@ -5,7 +5,7 @@ import {
 } from 'antd';
 import {
   SearchOutlined,
-  MusicOutlined,
+  AudioOutlined,
   PictureOutlined,
   FileTextOutlined,
   VideoCameraOutlined,
@@ -23,7 +23,7 @@ const { Option } = Select;
 const { Dragger } = Upload;
 
 const typeIconMap: Record<string, any> = {
-  audio: <MusicOutlined style={{ color: '#52c41a', fontSize: 24 }} />,
+  audio: <AudioOutlined style={{ color: '#52c41a', fontSize: 24 }} />,
   video: <VideoCameraOutlined style={{ color: '#eb2f96', fontSize: 24 }} />,
   image: <PictureOutlined style={{ color: '#1890ff', fontSize: 24 }} />,
   document: <FileTextOutlined style={{ color: '#faad14', fontSize: 24 }} />,

@@ -122,7 +122,6 @@ function Dashboard() {
             value={seasonFilter || undefined}
             onChange={(value) => setSeasonFilter(value || null)}
           >
-            <Option value={null}>全部节目季</Option>
             {seasons.map(s => (
               <Option key={s.id} value={s.id}>{s.name}</Option>
             ))}

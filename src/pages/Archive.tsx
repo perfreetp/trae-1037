@@ -118,11 +118,30 @@ function Archive() {
     },
   ];
 
-  const platformStats = [
-    { platform: '小宇宙', downloads: 28300, listens: 21800, color: '#ff7a45' },
-    { platform: 'Apple Podcasts', downloads: 17700, listens: 13700, color: '#1890ff' },
-    { platform: '网易云音乐', downloads: 5600, listens: 4200, color: '#eb2f96' },
-  ];
+  const platformColorMap: Record<string, string> = {
+    '小宇宙': '#ff7a45',
+    'Apple Podcasts': '#1890ff',
+    '网易云音乐': '#eb2f96',
+    '喜马拉雅': '#13c2c2',
+    'Spotify': '#52c41a',
+    '其他': '#722ed1',
+  };
+
+  const platformDataMap = new Map<string, { downloads: number; listens: number }>();
+  listenerData.forEach(d => {
+    const existing = platformDataMap.get(d.platform) || { downloads: 0, listens: 0 };
+    platformDataMap.set(d.platform, {
+      downloads: existing.downloads + d.downloads,
+      listens: existing.listens + d.listens,
+    });
+  });
+
+  const platformStats = Array.from(platformDataMap.entries()).map(([platform, data]) => ({
+    platform,
+    downloads: data.downloads,
+    listens: data.listens,
+    color: platformColorMap[platform] || '#8c8c8c',
+  }));
 
   const handleSubmitData = (values: any) => {
     addListenerData({

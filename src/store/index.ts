@@ -195,7 +195,28 @@ export const useAppStore = create<AppState>((set) => ({
     };
   }),
 
-  addListenerData: (data) => set((state) => ({
-    listenerData: [...state.listenerData, { ...data, id: `ld${Date.now()}` }]
-  })),
+  addListenerData: (data) => set((state) => {
+    const existingIndex = state.listenerData.findIndex(
+      d => d.episodeId === data.episodeId && d.platform === data.platform
+    );
+    if (existingIndex >= 0) {
+      const existing = state.listenerData[existingIndex];
+      const updated = {
+        ...existing,
+        downloads: existing.downloads + data.downloads,
+        listens: existing.listens + data.listens,
+        avgListenTime: Math.round(
+          (existing.avgListenTime * existing.downloads + data.avgListenTime * data.downloads) /
+          (existing.downloads + data.downloads)
+        ) || 0,
+        date: data.date,
+      };
+      const newListenerData = [...state.listenerData];
+      newListenerData[existingIndex] = updated;
+      return { listenerData: newListenerData };
+    }
+    return {
+      listenerData: [...state.listenerData, { ...data, id: `ld${Date.now()}` }]
+    };
+  }),
 }));
