@@ -92,7 +92,10 @@ function Archive() {
       render: (_: any, record: any) => {
         const data = listenerData.filter(d => d.episodeId === record.id);
         if (data.length === 0) return '-';
-        const avg = Math.round(data.reduce((sum, d) => sum + d.avgListenTime, 0) / data.length);
+        const totalDownloads = data.reduce((sum, d) => sum + d.downloads, 0);
+        if (totalDownloads === 0) return '-';
+        const weightedSum = data.reduce((sum, d) => sum + d.avgListenTime * d.downloads, 0);
+        const avg = Math.round(weightedSum / totalDownloads);
         return formatDuration(avg);
       },
     },

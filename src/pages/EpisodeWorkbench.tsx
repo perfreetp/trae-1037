@@ -658,14 +658,14 @@ function EpisodeWorkbench() {
           <Col span={14}>
             <Card title="发布检查清单" size="small">
               <div style={{ columnCount: 2, columnGap: 24 }}>
-                {[
-                  '音频文件已导出并备份', '音量电平符合平台标准', '封面图已确认',
-                  '节目简介已校对', 'Shownotes已完成', '版权音乐授权确认',
-                  '嘉宾照片及授权', '社交媒体文案准备', '赞助商口播已插入',
-                  '发布时间已确认', '各平台账号已登录', 'RSS Feed配置正确',
-                ].map((item, idx) => (
-                  <div key={idx} style={{ padding: '6px 0', breakInside: 'avoid' }}>
-                    <Checkbox defaultChecked={idx < 6}>{item}</Checkbox>
+                {currentEpisodeChecklist.map((item) => (
+                  <div key={item.id} style={{ padding: '6px 0', breakInside: 'avoid' }}>
+                    <Checkbox
+                      checked={item.checked}
+                      onChange={() => currentEpisodeId && togglePublishCheckItem(currentEpisodeId, item.id)}
+                    >
+                      {item.label}
+                    </Checkbox>
                   </div>
                 ))}
               </div>
