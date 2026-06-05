@@ -3,7 +3,7 @@ import {
   Member, Season, Episode, Task, Topic, Guest, Material,
   ClipMarker, MistakeRecord, EditingTodo, CopyrightMusic,
   CoverDraft, Copywriting, TimelineNote, ReviewComment,
-  Sponsorship, ListenerData, ModuleKey
+  Sponsorship, ListenerData, ModuleKey, PublishCheckItem
 } from '../types';
 import {
   members as mockMembers,
@@ -61,6 +61,10 @@ interface AppState {
   updateEditingTodoStatus: (id: string, status: EditingTodo['status']) => void;
   addReviewComment: (comment: Omit<ReviewComment, 'id'>) => void;
   resolveReviewComment: (id: string) => void;
+  addReplyToReview: (commentId: string, reply: { author: string; content: string; createdAt: string }) => void;
+  reopenReviewComment: (id: string) => void;
+  togglePublishCheckItem: (episodeId: string, itemId: string) => void;
+  addListenerData: (data: Omit<ListenerData, 'id'>) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -141,5 +145,57 @@ export const useAppStore = create<AppState>((set) => ({
 
   resolveReviewComment: (id) => set((state) => ({
     reviewComments: state.reviewComments.map(r => r.id === id ? { ...r, status: 'resolved' as const } : r)
+  })),
+
+  addReplyToReview: (commentId, reply) => set((state) => ({
+    reviewComments: state.reviewComments.map(r => {
+      if (r.id === commentId) {
+        const newReply = { ...reply, id: `r${Date.now()}` };
+        return {
+          ...r,
+          replies: [...(r.replies || []), newReply],
+        };
+      }
+      return r;
+    })
+  })),
+
+  reopenReviewComment: (id) => set((state) => ({
+    reviewComments: state.reviewComments.map(r => r.id === id ? { ...r, status: 'open' as const } : r)
+  })),
+
+  togglePublishCheckItem: (episodeId, itemId) => set((state) => {
+    const episode = state.episodes.find(e => e.id === episodeId);
+    let currentChecklist = episode?.publishChecklist;
+    if (!currentChecklist) {
+      const defaultChecklist: PublishCheckItem[] = [
+        { id: 'audio-1', label: '音频文件已导出并备份', checked: false, category: 'audio' },
+        { id: 'audio-2', label: '音量电平符合平台标准', checked: false, category: 'audio' },
+        { id: 'audio-3', label: '背景音乐音量合适', checked: false, category: 'audio' },
+        { id: 'content-1', label: '节目简介已校对', checked: false, category: 'content' },
+        { id: 'content-2', label: 'Shownotes已完成', checked: false, category: 'content' },
+        { id: 'content-3', label: '社交媒体文案准备', checked: false, category: 'content' },
+        { id: 'design-1', label: '封面图已确认', checked: false, category: 'design' },
+        { id: 'legal-1', label: '版权音乐授权确认', checked: false, category: 'legal' },
+        { id: 'legal-2', label: '嘉宾照片及授权', checked: false, category: 'legal' },
+        { id: 'legal-3', label: '赞助商口播已插入', checked: false, category: 'legal' },
+        { id: 'platform-1', label: '发布时间已确认', checked: false, category: 'platform' },
+        { id: 'platform-2', label: '各平台账号已登录', checked: false, category: 'platform' },
+        { id: 'platform-3', label: 'RSS Feed配置正确', checked: false, category: 'platform' },
+      ];
+      currentChecklist = defaultChecklist;
+    }
+    const newChecklist = currentChecklist.map(item =>
+      item.id === itemId ? { ...item, checked: !item.checked } : item
+    );
+    return {
+      episodes: state.episodes.map(e =>
+        e.id === episodeId ? { ...e, publishChecklist: newChecklist } : e
+      )
+    };
+  }),
+
+  addListenerData: (data) => set((state) => ({
+    listenerData: [...state.listenerData, { ...data, id: `ld${Date.now()}` }]
   })),
 }));

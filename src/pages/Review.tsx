@@ -6,12 +6,10 @@ import {
 import {
   CheckOutlined,
   MessageOutlined,
-  UserOutlined,
   ClockCircleOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
-import { ReviewComment } from '../types';
 import { getEpisodeTitle, getMemberName } from '../utils/format';
 import dayjs from 'dayjs';
 
@@ -19,10 +17,16 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 function Review() {
-  const { reviewComments, episodes, members, resolveReviewComment, addReviewComment } = useAppStore();
+  const {
+    reviewComments, episodes, members,
+    resolveReviewComment, addReviewComment,
+    addReplyToReview, reopenReviewComment,
+  } = useAppStore();
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [episodeFilter, setEpisodeFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [replyingCommentId, setReplyingCommentId] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
   const [form] = Form.useForm();
 
   const filteredComments = reviewComments.filter(c => {
@@ -50,6 +54,26 @@ function Review() {
     message.success('审核意见已提交');
     setIsModalOpen(false);
     form.resetFields();
+  };
+
+  const handleSubmitReply = (commentId: string) => {
+    if (!replyContent.trim()) {
+      message.warning('请输入回复内容');
+      return;
+    }
+    addReplyToReview(commentId, {
+      author: members[0].id,
+      content: replyContent.trim(),
+      createdAt: dayjs().format('YYYY-MM-DD HH:mm'),
+    });
+    message.success('回复已提交');
+    setReplyContent('');
+    setReplyingCommentId(null);
+  };
+
+  const handleReopen = (commentId: string) => {
+    reopenReviewComment(commentId);
+    message.success('意见已重新打开');
   };
 
   return (
@@ -138,15 +162,30 @@ function Review() {
                   paddingRight: 16,
                   borderRadius: 8,
                 }}
-                actions={
-                  comment.status === 'open'
+                actions={[
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<MessageOutlined />}
+                    onClick={() => {
+                      setReplyingCommentId(replyingCommentId === comment.id ? null : comment.id);
+                      setReplyContent('');
+                    }}
+                  >
+                    回复
+                  </Button>,
+                  ...(comment.status === 'open'
                     ? [
                       <Button type="link" size="small" icon={<CheckOutlined />} onClick={() => handleResolve(comment.id)}>
                         标记解决
                       </Button>
                     ]
-                    : []
-                }
+                    : [
+                      <Button type="link" size="small" onClick={() => handleReopen(comment.id)}>
+                        重新打开
+                      </Button>
+                    ])
+                ]}
               >
                 <List.Item.Meta
                   avatar={
@@ -196,8 +235,11 @@ function Review() {
                           borderLeft: '3px solid #52c41a',
                         }}>
                           {comment.replies.map(reply => (
-                            <div key={reply.id}>
+                            <div key={reply.id} style={{ marginBottom: reply.id === comment.replies![comment.replies!.length - 1].id ? 0 : 12 }}>
                               <Space style={{ marginBottom: 4 }}>
+                                <Avatar size={20} style={{ backgroundColor: '#52c41a' }}>
+                                  {getMemberName(reply.author, members).charAt(0)}
+                                </Avatar>
                                 <span style={{ fontWeight: 500, color: '#52c41a' }}>
                                   {getMemberName(reply.author, members)}
                                 </span>
@@ -205,9 +247,43 @@ function Review() {
                                   {reply.createdAt}
                                 </span>
                               </Space>
-                              <div style={{ color: '#333' }}>{reply.content}</div>
+                              <div style={{ color: '#333', paddingLeft: 28 }}>{reply.content}</div>
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {replyingCommentId === comment.id && (
+                        <div style={{
+                          marginTop: 12,
+                          padding: '12px 16px',
+                          background: '#f0f5ff',
+                          borderRadius: 6,
+                        }}>
+                          <div style={{ marginBottom: 8, fontWeight: 500, color: '#1890ff' }}>
+                            追加回复：
+                          </div>
+                          <TextArea
+                            rows={3}
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder="请输入回复内容..."
+                            style={{ marginBottom: 8 }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                            <Button size="small" onClick={() => {
+                              setReplyingCommentId(null);
+                              setReplyContent('');
+                            }}>
+                              取消
+                            </Button>
+                            <Button
+                              type="primary"
+                              size="small"
+                              onClick={() => handleSubmitReply(comment.id)}
+                            >
+                              提交回复
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

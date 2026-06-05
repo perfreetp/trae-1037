@@ -15,6 +15,13 @@ export interface Season {
   episodeCount: number;
 }
 
+export interface PublishCheckItem {
+  id: string;
+  label: string;
+  checked: boolean;
+  category: 'audio' | 'content' | 'design' | 'platform' | 'legal';
+}
+
 export interface Episode {
   id: string;
   seasonId: string;
@@ -27,6 +34,7 @@ export interface Episode {
   summary?: string;
   duration?: number;
   publishDate?: string;
+  publishChecklist?: PublishCheckItem[];
 }
 
 export interface Task {

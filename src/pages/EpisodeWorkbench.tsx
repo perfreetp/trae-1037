@@ -2,19 +2,19 @@ import { useState } from 'react';
 import {
   Card, Tabs, Row, Col, Tag, Space, Table, Button, Input,
   List, Avatar, Checkbox, Timeline, Badge, Select, Modal,
-  Form, DatePicker, Upload, message, Divider, Popconfirm,
+  Form, DatePicker, Upload, message, Divider, Empty,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
-  CheckOutlined,
-  CloseOutlined,
   UploadOutlined,
-  MusicOutlined,
   PictureOutlined,
   FileTextOutlined,
   TagOutlined,
   CalendarOutlined,
+  SafetyOutlined,
+  InboxOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import dayjs from 'dayjs';
@@ -53,8 +53,10 @@ function EpisodeWorkbench() {
     topics, tasks, members, guests, clipMarkers,
     mistakeRecords, editingTodos, copyrightMusic,
     coverDrafts, copywritings, timelineNotes, sponsorships,
+    materials, reviewComments,
     updateTaskStatus, toggleMistakeFixed, updateEditingTodoStatus,
     addTask, addTopic, updateEpisode,
+    togglePublishCheckItem,
   } = useAppStore();
 
   const [activeTab, setActiveTab] = useState('topics');
@@ -84,6 +86,25 @@ function EpisodeWorkbench() {
   const episodeCopy = copywritings.filter(c => c.episodeId === epId);
   const episodeTimeline = timelineNotes.filter(t => t.episodeId === epId);
   const episodeSponsors = sponsorships.filter(s => s.episodeId === epId);
+  const episodeMaterials = materials.filter(m => m.episodeId === epId);
+  const episodeReviews = reviewComments.filter(r => r.episodeId === epId);
+
+  const defaultChecklist = currentEpisode?.publishChecklist || [
+    { id: 'audio-1', label: '音频文件已导出并备份', checked: false, category: 'audio' as const },
+    { id: 'audio-2', label: '音量电平符合平台标准', checked: false, category: 'audio' as const },
+    { id: 'audio-3', label: '背景音乐音量合适', checked: false, category: 'audio' as const },
+    { id: 'content-1', label: '节目简介已校对', checked: false, category: 'content' as const },
+    { id: 'content-2', label: 'Shownotes已完成', checked: false, category: 'content' as const },
+    { id: 'content-3', label: '社交媒体文案准备', checked: false, category: 'content' as const },
+    { id: 'design-1', label: '封面图已确认', checked: false, category: 'design' as const },
+    { id: 'legal-1', label: '版权音乐授权确认', checked: false, category: 'legal' as const },
+    { id: 'legal-2', label: '嘉宾照片及授权', checked: false, category: 'legal' as const },
+    { id: 'legal-3', label: '赞助商口播已插入', checked: false, category: 'legal' as const },
+    { id: 'platform-1', label: '发布时间已确认', checked: false, category: 'platform' as const },
+    { id: 'platform-2', label: '各平台账号已登录', checked: false, category: 'platform' as const },
+    { id: 'platform-3', label: 'RSS Feed配置正确', checked: false, category: 'platform' as const },
+  ];
+  const currentEpisodeChecklist = defaultChecklist;
 
   const handleAddTask = (values: any) => {
     addTask({
@@ -678,6 +699,213 @@ function EpisodeWorkbench() {
                   </List.Item>
                 )}
               />
+            </Card>
+          </Col>
+        </Row>
+      ),
+    },
+    {
+      key: 'publish-prep',
+      label: '发布准备',
+      children: (
+        <Row gutter={[16, 16]}>
+          <Col span={16}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Card
+                  title={
+                    <Space>
+                      <PictureOutlined style={{ color: '#1890ff' }} />
+                      <span>封面 & 设计</span>
+                    </Space>
+                  }
+                  size="small"
+                >
+                  <div style={{
+                    height: 180,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    fontSize: 16,
+                    marginBottom: 12,
+                  }}>
+                    {currentEpisode?.title || '单集封面'}
+                  </div>
+                  <Space direction="vertical" size="small">
+                    <div>
+                      <span style={{ color: '#666' }}>当前版本：</span>
+                      <Tag color="green">v{episodeCovers.length > 0 ? episodeCovers.length : 1}</Tag>
+                      <Tag color="blue">{episodeCovers.length > 0 && episodeCovers[0].status === 'approved' ? '已通过' : '审核中'}</Tag>
+                    </div>
+                  </Space>
+                </Card>
+              </Col>
+              <Col span={12}>
+                <Card
+                  title={
+                    <Space>
+                      <FileTextOutlined style={{ color: '#1890ff' }} />
+                      <span>文案内容</span>
+                    </Space>
+                  }
+                  size="small"
+                >
+                  <List
+                    size="small"
+                    dataSource={episodeCopy.slice(0, 3)}
+                    renderItem={(item) => (
+                      <List.Item>
+                        <List.Item.Meta
+                          title={
+                            <Space>
+                              <span style={{ fontSize: 13 }}>
+                                {item.type === 'description' ? '节目简介' : item.type === 'shownotes' ? '时间线' : '社交媒体'}
+                              </span>
+                              <Tag color="blue">v{item.version}</Tag>
+                            </Space>
+                          }
+                          description={
+                            <div style={{
+                              fontSize: 12,
+                              color: '#666',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                            }}>
+                              {item.content}
+                            </div>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                  />
+                  {episodeCopy.length === 0 && (
+                    <Empty description="暂无文案" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  )}
+                </Card>
+              </Col>
+              <Col span={24}>
+                <Card
+                  title={
+                    <Space>
+                      <InboxOutlined style={{ color: '#1890ff' }} />
+                      <span>素材资产</span>
+                    </Space>
+                  }
+                  size="small"
+                >
+                  {episodeMaterials.length > 0 ? (
+                    <Row gutter={[8, 8]}>
+                      {episodeMaterials.slice(0, 6).map(m => (
+                        <Col span={8} key={m.id}>
+                          <div style={{
+                            padding: 8,
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 4,
+                            fontSize: 12,
+                          }}>
+                            <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {m.name}
+                            </div>
+                            <div style={{ color: '#999', marginTop: 4 }}>
+                              {m.type} · {m.size}
+                            </div>
+                          </div>
+                        </Col>
+                      ))}
+                    </Row>
+                  ) : (
+                    <Empty description="暂无素材" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  )}
+                </Card>
+              </Col>
+              <Col span={24}>
+                <Card
+                  title={
+                    <Space>
+                      <MessageOutlined style={{ color: '#1890ff' }} />
+                      <span>审核意见</span>
+                    </Space>
+                  }
+                  size="small"
+                >
+                  {episodeReviews.length > 0 ? (
+                    <List
+                      size="small"
+                      dataSource={episodeReviews.slice(0, 3)}
+                      renderItem={(item) => (
+                        <List.Item>
+                          <List.Item.Meta
+                            avatar={<Avatar size="small">{getMemberName(item.reviewer, members)?.[0]}</Avatar>}
+                            title={
+                              <Space>
+                                <span>{getMemberName(item.reviewer, members)}</span>
+                                <Tag color={item.status === 'resolved' ? 'green' : 'red'}>
+                                  {item.status === 'resolved' ? '已解决' : '待处理'}
+                                </Tag>
+                              </Space>
+                            }
+                            description={<div style={{ fontSize: 12 }}>{item.content}</div>}
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <Empty description="暂无审核意见" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  )}
+                </Card>
+              </Col>
+            </Row>
+          </Col>
+          <Col span={8}>
+            <Card
+              title={
+                <Space>
+                  <SafetyOutlined style={{ color: '#1890ff' }} />
+                  <span>发布检查清单</span>
+                </Space>
+              }
+              size="small"
+              extra={
+                <span style={{ fontSize: 12, color: '#666' }}>
+                  {currentEpisodeChecklist.filter(i => i.checked).length}/{currentEpisodeChecklist.length}
+                </span>
+              }
+            >
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {[
+                  { key: 'audio', label: '音频制作' },
+                  { key: 'content', label: '内容文案' },
+                  { key: 'design', label: '设计素材' },
+                  { key: 'legal', label: '法律版权' },
+                  { key: 'platform', label: '平台发布' },
+                ].map(category => {
+                  const items = currentEpisodeChecklist.filter(i => i.category === category.key);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={category.key}>
+                      <div style={{ fontWeight: 500, marginBottom: 8, color: '#1890ff' }}>
+                        {category.label}
+                      </div>
+                      {items.map(item => (
+                        <div key={item.id} style={{ padding: '4px 0' }}>
+                          <Checkbox
+                            checked={item.checked}
+                            onChange={() => currentEpisodeId && togglePublishCheckItem(currentEpisodeId, item.id)}
+                          >
+                            {item.label}
+                          </Checkbox>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </Space>
             </Card>
           </Col>
         </Row>

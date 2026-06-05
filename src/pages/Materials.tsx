@@ -4,7 +4,6 @@ import {
   Upload, Modal, Select, message, Popconfirm, Form,
 } from 'antd';
 import {
-  UploadOutlined,
   SearchOutlined,
   MusicOutlined,
   PictureOutlined,
@@ -14,13 +13,14 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   PlusOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import { Material } from '../types';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
-const { TextArea } = Input;
+const { Dragger } = Upload;
 
 const typeIconMap: Record<string, any> = {
   audio: <MusicOutlined style={{ color: '#52c41a', fontSize: 24 }} />,
@@ -46,6 +46,22 @@ const typeTextMap: Record<string, string> = {
   other: '其他',
 };
 
+const getTypeFromFileName = (fileName: string): Material['type'] => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg', 'wma'].includes(ext || '')) return 'audio';
+  if (['mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm'].includes(ext || '')) return 'video';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'psd', 'ai'].includes(ext || '')) return 'image';
+  if (['doc', 'docx', 'pdf', 'txt', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar'].includes(ext || '')) return 'document';
+  return 'other';
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+};
+
 function Materials() {
   const { materials, episodes, addMaterial, deleteMaterial } = useAppStore();
   const [searchText, setSearchText] = useState('');
@@ -54,9 +70,12 @@ function Materials() {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadForm] = Form.useForm();
+  const [selectedFileInfo, setSelectedFileInfo] = useState<{ name: string; fileName: string; size: string; type: Material['type'] } | null>(null);
 
   const filteredMaterials = materials.filter(m => {
-    const matchSearch = !searchText || m.name.includes(searchText) || m.fileName.includes(searchText);
+    const matchSearch = !searchText ||
+      m.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      m.fileName.toLowerCase().includes(searchText.toLowerCase());
     const matchType = !typeFilter || m.type === typeFilter;
     const matchEpisode = !episodeFilter || m.episodeId === episodeFilter;
     return matchSearch && matchType && matchEpisode;
@@ -68,39 +87,57 @@ function Materials() {
   };
 
   const handleDownload = (material: Material) => {
-    const content = `素材名称: ${material.name}\n文件名: ${material.fileName}\n类型: ${typeTextMap[material.type]}\n大小: ${material.size}\n上传日期: ${material.uploadDate}\n标签: ${material.tags.join(', ')}`;
+    const content = `素材名称: ${material.name}\n文件名: ${material.fileName}\n类型: ${typeTextMap[material.type]}\n大小: ${material.size}\n上传日期: ${material.uploadDate}\n关联单集: ${material.episodeId ? episodes.find(e => e.id === material.episodeId)?.title || '-' : '-'}\n标签: ${material.tags.join(', ')}`;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${material.name}_信息.txt`;
+    a.download = `${material.name}_素材信息.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    message.success(`已导出 ${material.name} 的信息文件`);
+    message.success(`已导出 ${material.name} 的素材信息文件`);
   };
 
-  const handleUpload = (values: any) => {
-    const fileExt = values.fileName?.split('.').pop()?.toLowerCase();
-    let type: Material['type'] = 'other';
-    if (['mp3', 'wav', 'flac', 'aac', 'm4a'].includes(fileExt || '')) type = 'audio';
-    else if (['mp4', 'mov', 'avi', 'mkv'].includes(fileExt || '')) type = 'video';
-    else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt || '')) type = 'image';
-    else if (['doc', 'docx', 'pdf', 'txt', 'xls', 'xlsx', 'psd', 'ai'].includes(fileExt || '')) type = 'document';
+  const handleFileSelect = (file: File) => {
+    const type = getTypeFromFileName(file.name);
+    const info = {
+      name: file.name.replace(/\.[^/.]+$/, ''),
+      fileName: file.name,
+      size: formatFileSize(file.size),
+      type,
+    };
+    setSelectedFileInfo(info);
+    uploadForm.setFieldsValue({
+      name: info.name,
+      fileName: info.fileName,
+      size: info.size,
+      type: info.type,
+    });
+    return false;
+  };
 
+  const handleUploadConfirm = (values: any) => {
     addMaterial({
       name: values.name,
-      type: values.type || type,
-      fileName: values.fileName || `${values.name}.dat`,
-      size: values.size || '1.0 MB',
+      type: values.type,
+      fileName: values.fileName || selectedFileInfo?.fileName || '未命名文件',
+      size: values.size || selectedFileInfo?.size || '1.0 MB',
       uploadDate: dayjs().format('YYYY-MM-DD'),
       episodeId: values.episodeId || undefined,
       tags: values.tags || [],
     });
     message.success('素材上传成功');
     setIsUploadModalOpen(false);
+    setSelectedFileInfo(null);
     uploadForm.resetFields();
+  };
+
+  const openUploadModal = () => {
+    setSelectedFileInfo(null);
+    uploadForm.resetFields();
+    setIsUploadModalOpen(true);
   };
 
   const columns = [
@@ -156,7 +193,7 @@ function Materials() {
       key: 'action',
       render: (_: any, record: Material) => (
         <Space>
-          <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(record)}>下载</Button>
+          <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(record)}>下载信息</Button>
           <Popconfirm title="确定删除此素材？" onConfirm={() => handleDelete(record.id)} okText="确定" cancelText="取消">
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
           </Popconfirm>
@@ -218,7 +255,7 @@ function Materials() {
                 列表视图
               </Button>
             </Button.Group>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsUploadModalOpen(true)}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={openUploadModal}>
               上传素材
             </Button>
           </Space>
@@ -248,7 +285,7 @@ function Materials() {
                   size="small"
                   bodyStyle={{ padding: 16 }}
                   actions={[
-                    <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(mat)}>下载</Button>,
+                    <Button type="link" size="small" icon={<DownloadOutlined />} onClick={() => handleDownload(mat)}>下载信息</Button>,
                     <Popconfirm title="确定删除？" onConfirm={() => handleDelete(mat.id)} okText="确定" cancelText="取消">
                       <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
                     </Popconfirm>,
@@ -301,11 +338,62 @@ function Materials() {
       <Modal
         title="上传素材"
         open={isUploadModalOpen}
-        onCancel={() => setIsUploadModalOpen(false)}
+        onCancel={() => {
+          setIsUploadModalOpen(false);
+          setSelectedFileInfo(null);
+        }}
         footer={null}
         width={600}
+        destroyOnClose
       >
-        <Form form={uploadForm} layout="vertical" onFinish={handleUpload}>
+        {!selectedFileInfo ? (
+          <Dragger
+            accept="*"
+            multiple={false}
+            beforeUpload={handleFileSelect}
+            showUploadList={false}
+            style={{ marginBottom: 24 }}
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+            <p className="ant-upload-hint">支持音频、视频、图片、文档等各种格式</p>
+          </Dragger>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{
+              padding: 16,
+              background: '#f6ffed',
+              border: '1px solid #b7eb8f',
+              borderRadius: 8,
+              marginBottom: 16,
+            }}>
+              <Space>
+                {typeIconMap[selectedFileInfo.type]}
+                <div>
+                  <div style={{ fontWeight: 500 }}>{selectedFileInfo.fileName}</div>
+                  <div style={{ fontSize: 12, color: '#666' }}>
+                    {typeTextMap[selectedFileInfo.type]} · {selectedFileInfo.size}
+                  </div>
+                </div>
+              </Space>
+              <Button
+                type="link"
+                size="small"
+                style={{ marginTop: 8, padding: 0 }}
+                onClick={() => {
+                  setSelectedFileInfo(null);
+                  uploadForm.resetFields();
+                }}
+              >
+                重新选择文件
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <Form form={uploadForm} layout="vertical" onFinish={handleUploadConfirm}>
           <Row gutter={16}>
             <Col span={14}>
               <Form.Item name="name" label="素材名称" rules={[{ required: true }]}>
@@ -327,7 +415,7 @@ function Materials() {
           <Row gutter={16}>
             <Col span={14}>
               <Form.Item name="fileName" label="文件名">
-                <Input placeholder="例如: audio_v1.mp3" />
+                <Input placeholder="文件名" />
               </Form.Item>
             </Col>
             <Col span={10}>
@@ -348,8 +436,13 @@ function Materials() {
           </Form.Item>
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">确认上传</Button>
-              <Button onClick={() => setIsUploadModalOpen(false)}>取消</Button>
+              <Button type="primary" htmlType="submit" disabled={!selectedFileInfo}>
+                确认上传
+              </Button>
+              <Button onClick={() => {
+                setIsUploadModalOpen(false);
+                setSelectedFileInfo(null);
+              }}>取消</Button>
             </Space>
           </Form.Item>
         </Form>

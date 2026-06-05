@@ -17,7 +17,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 function Guests() {
-  const { guests, addGuest, episodes, updateGuest, deleteGuest } = useAppStore();
+  const { guests, addGuest, updateGuest, deleteGuest } = useAppStore();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);

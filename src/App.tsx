@@ -33,7 +33,6 @@ const menuItems = [
 
 function App() {
   const { currentModule, setCurrentModule, members, reviewComments } = useAppStore();
-  const openComments = reviewComments.filter(c => c.status === 'open').length;
 
   const renderContent = () => {
     switch (currentModule as ModuleKey) {

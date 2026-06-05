@@ -1,24 +1,22 @@
 import { useState } from 'react';
 import {
   Card, Row, Col, Tag, Space, Button, List, Badge,
-  Calendar, Modal, Form, DatePicker, Select, Input, message,
+  Calendar, Modal, Form, DatePicker, Select, message,
 } from 'antd';
 import {
   PlusOutlined,
   AudioOutlined,
   RocketOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store';
 import dayjs, { Dayjs } from 'dayjs';
 import type { Dayjs as DayjsType } from 'dayjs';
 
 const { Option } = Select;
-const { RangePicker } = DatePicker;
 
 function PublishCalendar() {
-  const { episodes, sponsorships, updateEpisodeStatus, updateEpisode } = useAppStore();
+  const { episodes, sponsorships, updateEpisode } = useAppStore();
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -29,7 +27,6 @@ function PublishCalendar() {
   );
 
   const dateCellRender = (value: DayjsType) => {
-    const dateStr = value.format('YYYY-MM-DD');
     const dayEpisodes = episodes.filter(e => {
       if (e.publishDate) {
         return dayjs(e.publishDate).isSame(value, 'day');
@@ -68,7 +65,6 @@ function PublishCalendar() {
   };
 
   const getListData = (value: DayjsType) => {
-    const dateStr = value.format('YYYY-MM-DD');
     const dayEpisodes = episodes.filter(e => {
       if (e.publishDate) {
         return dayjs(e.publishDate).isSame(value, 'day');
@@ -84,9 +80,10 @@ function PublishCalendar() {
   const selectedData = getListData(selectedDate);
 
   const handlePublish = (episodeId: string) => {
+    const episode = episodes.find(e => e.id === episodeId);
     updateEpisode(episodeId, {
       status: 'published',
-      publishDate: dayjs().format('YYYY-MM-DD'),
+      publishDate: episode?.publishDate || dayjs().format('YYYY-MM-DD'),
     });
     message.success('已标记为已发布');
   };

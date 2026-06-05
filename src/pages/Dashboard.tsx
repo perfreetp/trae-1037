@@ -1,4 +1,5 @@
-import { Card, Row, Col, Statistic, Progress, Table, Tag, Avatar, List, Badge, Space, Button } from 'antd';
+import { useState } from 'react';
+import { Card, Row, Col, Statistic, Progress, Table, Tag, Avatar, List, Badge, Space, Button, Select } from 'antd';
 import {
   ClockCircleOutlined,
   CheckCircleOutlined,
@@ -10,6 +11,8 @@ import {
 import { useAppStore } from '../store';
 import dayjs from 'dayjs';
 import { getMemberName } from '../utils/format';
+
+const { Option } = Select;
 
 const statusMap: Record<string, { color: string; text: string }> = {
   draft: { color: 'default', text: '草稿' },
@@ -36,11 +39,16 @@ const priorityText: Record<string, string> = {
 
 function Dashboard() {
   const { seasons, episodes, tasks, members, setCurrentModule, setCurrentEpisodeId } = useAppStore();
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(null);
 
-  const publishedCount = episodes.filter(e => e.status === 'published').length;
-  const inProgressCount = episodes.filter(e => ['recording', 'editing', 'review'].includes(e.status)).length;
-  const plannedCount = episodes.filter(e => ['draft', 'planning'].includes(e.status)).length;
-  const upcomingDeadlines = episodes
+  const filteredEpisodes = seasonFilter
+    ? episodes.filter(e => e.seasonId === seasonFilter)
+    : episodes;
+
+  const publishedCount = filteredEpisodes.filter(e => e.status === 'published').length;
+  const inProgressCount = filteredEpisodes.filter(e => ['recording', 'editing', 'review'].includes(e.status)).length;
+  const plannedCount = filteredEpisodes.filter(e => ['draft', 'planning'].includes(e.status)).length;
+  const upcomingDeadlines = filteredEpisodes
     .filter(e => e.status !== 'published' && e.status !== 'archived')
     .sort((a, b) => dayjs(a.deadline).valueOf() - dayjs(b.deadline).valueOf())
     .slice(0, 5);
@@ -99,8 +107,28 @@ function Dashboard() {
     },
   ];
 
+  const displaySeasons = seasonFilter ? seasons.filter(s => s.id === seasonFilter) : seasons;
+
   return (
     <div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ margin: 0 }}>节目看板</h2>
+        <Space>
+          <span style={{ color: '#666' }}>筛选节目季：</span>
+          <Select
+            style={{ width: 200 }}
+            placeholder="全部节目季"
+            allowClear
+            value={seasonFilter || undefined}
+            onChange={(value) => setSeasonFilter(value || null)}
+          >
+            <Option value={null}>全部节目季</Option>
+            {seasons.map(s => (
+              <Option key={s.id} value={s.id}>{s.name}</Option>
+            ))}
+          </Select>
+        </Space>
+      </div>
       <Row gutter={[16, 16]}>
         <Col span={6}>
           <Card>
@@ -150,7 +178,7 @@ function Dashboard() {
             title="节目季进度"
             extra={<Button type="link" onClick={() => setCurrentModule('episode')}>查看全部</Button>}
           >
-            {seasons.map(season => {
+            {displaySeasons.map(season => {
               const seasonEpisodes = episodes.filter(e => e.seasonId === season.id);
               const seasonPublishedCount = seasonEpisodes.filter(e => e.status === 'published').length;
               const progress = season.episodeCount > 0
@@ -194,7 +222,7 @@ function Dashboard() {
           >
             <Table
               columns={episodeColumns}
-              dataSource={episodes}
+              dataSource={filteredEpisodes}
               rowKey="id"
               pagination={false}
               size="middle"
